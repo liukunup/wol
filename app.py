@@ -9,7 +9,7 @@ from multiping import MultiPing
 app = Flask(__name__)
 
 # 环境变量
-e_database_type = os.environ.get('DB_TYPE', 'json')
+e_database_type = os.environ.get('DB_TYPE', 'json') # [json, sqlite, mysql, mariadb]
 e_database_host = os.environ.get('DB_HOST', 'localhost')
 e_database_port = os.environ.get('DB_PORT', '3306')
 e_database_username = os.environ.get('DB_USERNAME', 'wakeonlan')
@@ -19,12 +19,32 @@ e_database_name = os.environ.get('DB_NAME', 'wakeonlan')
 # 全局变量
 g_devices = {}
 
+# 样例数据
+sample_devices = {
+    "1": {
+        "name": "样例数据",
+        "mac": "11:22:33:44:55:66",
+        "host": "255.255.255.255",
+        "port": 9,
+        "ssh": {
+            "ip": "192.168.0.8",
+            "port": 22,
+            "username": "root",
+            "password": "",
+            "pkey": "私钥内容",
+            "key_filename": "私钥文件",
+            "passphrase": "私钥密码"
+        }
+    }
+}
+
+
 def load_config_from_json():
     # 读取配置文件
     if not os.access('device.json', os.R_OK):
         # 如果配置文件不存在，则创建一个空的配置文件
         with open('device.json', 'w') as f:
-            f.write('')
+            f.write(json.dumps(sample_devices, indent=4, ensure_ascii=False))
         return {}
     else:
         with open('device.json', 'r') as f:
@@ -39,7 +59,7 @@ def save_config_to_json(devices):
     # 保存或更新到配置文件
     with open('device.json', 'w') as f:
         try:
-            json.dump(devices, f)
+            json.dump(devices, f, indent=4, ensure_ascii=False)
         except TypeError:
             return False
     return True
@@ -128,24 +148,17 @@ def shutdown(id: int):
     if not device:
         return "设备不存在", 404
 
-    ip = device.get("ip")
-    if not ip:
-        return "设备不存在", 404
+    ip = device.get("ssh").get("ip")
     port = device.get("ssh").get("port")
-    if not port:
-        return "设备不存在", 404
     username = device.get("ssh").get("username")
-    if not username:
-        return "设备不存在", 404
     password = device.get("ssh").get("password")
-    if not password:
-        return "设备不存在", 404
-    private_key = device.get("ssh").get("private_key")
-    if not private_key:
-        return "设备不存在", 404
+    pkey = device.get("ssh").get("pkey")
+    key_filename = device.get("ssh").get("key_filename")
+    passphrase = device.get("ssh").get("passphrase")
+
     name = device.get("name")
     if not name:
-        name = "未命名设备", 404
+        name = "未命名设备"
 
     # 关机设备
     try:
@@ -156,10 +169,8 @@ def shutdown(id: int):
         ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
 
         # 连接服务器
-        if private_key:
-            ssh_client.connect(ip, port, username, key_filename=private_key)
-        else:
-            ssh_client.connect(ip, port, username, password)
+        ssh_client.connect(hostname=ip, port=port, username=username, password=password,
+                           pkey=pkey, key_filename=key_filename, passphrase=passphrase)
 
         # 执行命令
         stdin, stdout, stderr = ssh_client.exec_command("shutdown -h now")
@@ -239,7 +250,7 @@ def operate_device_by_id(id):
 
 if __name__ == "__main__":
     # 加载配置
-    if database_type.lower() in ['mysql', 'mariadb']:
+    if e_database_type.lower() in ['mysql', 'mariadb']:
         g_devices = load_config_from_database()
     else:
         g_devices = load_config_from_json()
