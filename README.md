@@ -12,3 +12,14 @@ http://ip:port/wake/00:11:22:33:44:55?host=255.255.255.255&port=9
 3. ssh 关闭主机
 4. 定时开关机（就是个定时任务）
 根据 mac 换取内网ip地址
+
+
+## 接口设计
+
+- /device/<id> CURD
+
+### 对设备进行操作
+
+- /device/<id>?op=wakeup
+- /device/<id>?op=shutdown
+- /device/<id>?op=ping
