@@ -2,257 +2,397 @@ import os
 import json
 import paramiko
 
-from flask import Flask, request
+from flask import Flask, request, render_template
 from wakeonlan import send_magic_packet
 from multiping import MultiPing
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy.orm import DeclarativeBase, mapped_column, Mapped
 
 app = Flask(__name__)
 
-# 环境变量
-e_database_type = os.environ.get('DB_TYPE', 'json') # [json, sqlite, mysql, mariadb]
-e_database_host = os.environ.get('DB_HOST', 'localhost')
-e_database_port = os.environ.get('DB_PORT', '3306')
-e_database_username = os.environ.get('DB_USERNAME', 'wakeonlan')
-e_database_password = os.environ.get('DB_PASSWORD', 'pls_set_stronger_password')
-e_database_name = os.environ.get('DB_NAME', 'wakeonlan')
+class Base(DeclarativeBase):
+    pass
 
-# 全局变量
-g_devices = {}
-
-# 样例数据
-sample_devices = {
-    "1": {
-        "name": "样例数据",
-        "mac": "11:22:33:44:55:66",
-        "host": "255.255.255.255",
-        "port": 9,
-        "ssh": {
-            "ip": "192.168.0.8",
-            "port": 22,
-            "username": "root",
-            "password": "",
-            "pkey": "私钥内容",
-            "key_filename": "私钥文件",
-            "passphrase": "私钥密码"
-        }
-    }
-}
+db = SQLAlchemy(model_class=Base)
 
 
-def load_config_from_json():
-    # 读取配置文件
-    if not os.access('device.json', os.R_OK):
-        # 如果配置文件不存在，则创建一个空的配置文件
-        with open('device.json', 'w') as f:
-            f.write(json.dumps(sample_devices, indent=4, ensure_ascii=False))
-        return {}
-    else:
-        with open('device.json', 'r') as f:
-            try:
-                conf = json.load(f)
-                return conf
-            except json.JSONDecodeError:
-                # 如果配置文件格式不正确，则返回空字典
-                return {}
+class DeviceModel(db.Model):
+    """
+    设备表: 用于存储设备信息,包括设备名称/MAC地址/IP地址/端口号等
+    """
 
-def save_config_to_json(devices):
-    # 保存或更新到配置文件
-    with open('device.json', 'w') as f:
+    # 表名
+    __tablename__ = 'device'
+
+    # 字段
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="设备ID")
+    name: Mapped[str] = mapped_column(nullable=False, comment="自定义设备名称")
+    wol_mac: Mapped[str] = mapped_column(nullable=True, comment="[WOL] MAC地址")
+    wol_host: Mapped[str] = mapped_column(nullable=True, comment="[WOL] IP地址或域名")
+    wol_port: Mapped[int] = mapped_column(nullable=True, comment="[WOL] 端口号")
+    ssh_ip: Mapped[str] = mapped_column(nullable=True, comment="[SSH] IP地址或域名")
+    ssh_port: Mapped[int] = mapped_column(nullable=True, comment="[SSH] 端口号")
+    ssh_username: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 账户")
+    ssh_password: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密码")
+    ssh_pkey: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密钥字符串")
+    ssh_key_filename: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密钥文件名")
+    ssh_passphrase: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密钥的密码")
+
+    def to_dict(self, secure=True):
+        """
+        将设备对象转换为字典
+
+        :param secure: 是否安全返回,如果为True,则不会返回密码和密钥等敏感信息
+        :return: 包含设备信息的字典
+        """
+        # 拆分字段
+        wol_fields = [col for col in self.__table__.columns if col.name.startswith('wol_')]
+        ssh_fields = [col for col in self.__table__.columns if col.name.startswith('ssh_')]
+        other_fields = [col for col in self.__table__.columns if col not in wol_fields and col not in ssh_fields]
+        # 构建字典
+        result = {c.name: getattr(self, c.name) for c in other_fields}
+        result.update({'wol': {c.name.replace('wol_', ''): getattr(self, c.name) for c in wol_fields}})
+        result.update({'ssh': {c.name.replace('ssh_', ''): getattr(self, c.name) for c in ssh_fields}})
+        # 移除密钥
+        if secure and 'ssh' in result:
+            if 'password' in result['ssh']:
+                result['ssh']['password'] = None
+            if 'pkey' in result['ssh']:
+                result['ssh']['pkey'] = None
+            if 'key_filename' in result['ssh']:
+                result['ssh']['key_filename'] = None
+            if 'passphrase' in result['ssh']:
+                result['ssh']['passphrase'] = None
+        return result
+
+    def __str__(self):
+        """
+        将设备对象转换为JSON字符串
+
+        :return: 包含设备信息的JSON字符串
+        """
+        return json.dumps(self.to_dict(), ensure_ascii=False)
+
+    def __repr__(self):
+        """
+        返回设备对象的字符串表示
+
+        :return: 设备对象的字符串表示
+        """
+        return f'<Device {self.name}>'
+
+
+class DeviceDAO:
+    """
+    设备数据访问对象类,定义设备信息的增删改查接口
+    """
+
+    def __init__(self, dbo):
+        """
+        初始化设备数据访问对象
+
+        :param dbo: 数据库对象
+        """
+        self.db = dbo
+
+    def get_all_devices(self):
+        """
+        获取所有设备信息
+
+        :return: 包含所有设备信息的字典
+        """
+        return {device.id: device for device in self.db.query(DeviceModel).all()}
+
+    def get_device_by_id(self, id):
+        """
+        根据设备ID获取设备信息
+
+        :param id: 设备ID
+        :return: 对应的设备信息,如果不存在则返回None
+        """
+        return self.db.query(DeviceModel).filter_by(id=id).first()
+
+    def update_device_by_id(self, id, device):
+        """
+        根据设备ID更新设备信息
+
+        :param id: 设备ID
+        :param device: 新的设备信息
+        :return: 更新成功返回True,失败返回False
+        """
+        dev = self.get_device_by_id(id)
+        if dev:
+            for key, value in device.items():
+                setattr(dev, key, value)
+            self.db.commit()
+            return True
+        return False
+
+    def delete_device_by_id(self, id):
+        """
+        根据设备ID删除设备信息
+
+        :param id: 设备ID
+        :return: 删除成功返回True,失败返回False
+        """
+        dev = self.get_device_by_id(id)
+        if dev:
+            self.db.delete(dev)
+            self.db.commit()
+            return True
+        return False
+
+    def add_device(self, device):
+        """
+        添加新的设备信息
+
+        :param device: 新的设备信息
+        :return: 添加成功返回True,失败返回False
+        """
+        self.db.add(device)
+        self.db.commit()
+        return True
+
+
+class DeviceManager:
+    """
+    设备操作服务类,提供设备相关的操作
+    """
+
+    def __init__(self, device):
+        """
+        初始化设备操作服务
+
+        :param device: 设备信息
+        """
+        self.device = device
+
+    def wakeup(self):
+        """
+        唤醒设备
+
+        :return: 唤醒成功返回True,失败返回False
+        """
         try:
-            json.dump(devices, f, indent=4, ensure_ascii=False)
-        except TypeError:
+            send_magic_packet(self.device.wol_mac, ip_address=self.device.wol_host, port=self.device.wol_port)
+            return True
+        except Exception as e:
+            print(f"唤醒设备失败: {e}")
             return False
-    return True
 
-def load_config_from_database():
-    # 从数据库读取配置
-    return {}
+    def shutdown(self):
+        """
+        关闭设备
 
-def save_config_to_database(devices):
-    # 保存或更新到数据库
-    return True
+        :return: 关闭成功返回True,失败返回False
+        """
+        command = "shutdown -h now"
+        result = self.ssh(command)
+        return result is not None
+
+    def reboot(self):
+        """
+        重启设备
+
+        :return: 重启成功返回True,失败返回False
+        """
+        command = "reboot"
+        result = self.ssh(command)
+        return result is not None
+
+    def ping(self):
+        """
+        检查设备是否在线
+
+        :return: 在线返回True,离线返回False
+        """
+        mp = MultiPing([self.device.wol_host], timeout=1, retry=1)
+        mp.send()
+        responses, no_responses = mp.receive()
+        return self.device.wol_host in responses
+
+    def ssh(self, command):
+        """
+        执行SSH命令
+
+        :param command: SSH命令
+        :return: 命令执行结果
+        """
+        try:
+            client = paramiko.SSHClient()
+            client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+            client.connect(self.device.ssh_ip, port=self.device.ssh_port,
+                           username=self.device.ssh_username, password=self.device.ssh_password,
+                           pkey=self.device.ssh_pkey, key_filename=self.device.ssh_key_filename,
+                           passphrase=self.device.ssh_passphrase)
+            stdin, stdout, stderr = client.exec_command(command)
+            return stdout.read().decode('utf-8')
+        except Exception as e:
+            print(f"执行SSH命令失败: {e}")
+            return None
+        finally:
+            client.close()
 
 
-@app.route("/devices", methods=["GET"])
+class DeviceService:
+    """
+    设备服务类：提供设备相关的业务逻辑操作
+    """
+
+    def __init__(self):
+        self.__database_type = os.environ.get('DB_TYPE', 'sqlite') # [sqlite, mysql, mariadb, postgresql]
+        self.__database_type = self.__database_type.lower()
+        if self.__database_type in ['mysql', 'mariadb', 'postgresql']:
+            self.__database_host = os.environ.get('DB_HOST', 'localhost')
+            self.__database_port = os.environ.get('DB_PORT', '3306')
+            self.__database_username = os.environ.get('DB_USERNAME', 'wakeonlan')
+            self.__database_password = os.environ.get('DB_PASSWORD', 'pls_set_stronger_password')
+            self.__database_name = os.environ.get('DB_NAME', 'wakeonlan')
+            self.database_url = f'{self.__database_type}://{self.__database_username}:{self.__database_password}@{self.__database_host}:{self.__database_port}/{self.__database_name}'
+        else:
+            self.__database_name = os.environ.get('DB_NAME', 'wakeonlan')
+            self.database_url = f'sqlite:///{self.__database_name}.db'
+        self.db = None
+
+    def init_database(self, _app, _dbo):
+        """
+        初始化数据库
+
+        :param _app: Flask应用对象
+        :param _dbo: 数据库对象
+        """
+        _app.config["SQLALCHEMY_DATABASE_URI"] = self.database_url
+        _dbo.init_app(_app)
+        with _app.app_context():
+            try:
+                _dbo.create_all()
+                print("Database tables created successfully.")
+            except Exception as e:
+                print(f"Failed to create database tables: {e}")
+        self.db = _dbo
+
+    def get_all_devices(self):
+        """
+        获取所有设备信息
+        """
+        devices = DeviceDAO(self.db).get_all_devices()
+        return Response(0, "成功", {id: device.to_dict() for id, device in devices.items()}).to_dict(), 200
+    
+    def get_device_by_id(self, id):
+        """
+        根据设备ID获取设备信息
+        """
+        return DeviceDAO(self.db).get_device_by_id(id)
+
+    def update_device_by_id(self, id, device):
+        """
+        根据设备ID更新设备信息
+        """
+        return DeviceDAO(self.db).update_device_by_id(id, device)
+
+    def delete_device_by_id(self, id):
+        """
+        根据设备ID删除设备信息
+        """
+        return DeviceDAO(self.db).delete_device_by_id(id)
+
+    def add_device(self, device):
+        """
+        添加新的设备信息
+        """
+        return DeviceDAO(self.db).add_device(device)
+
+    def operate_device_by_id(self, id, op):
+        """
+        根据设备ID执行操作
+        """
+        if op: op = op.lower()
+
+        device = self.get_device_by_id(id)
+        if not device:
+            return "设备不存在", 404
+
+        dm = DeviceManager(device)
+        if op == "wakeup": # 唤醒
+            result = dm.wakeup()
+        elif op == "shutdown": # 关机
+            result = dm.shutdown()
+        elif op == "reboot": # 重启
+            result = dm.reboot()
+        elif op == "ping": # ping
+            result = dm.ping()
+        else:
+            return "无效的操作", 400
+        return result
+
+
+class Response:
+    """
+    响应对象类,用于封装API接口的响应信息
+    """
+
+    def __init__(self, code, message, data=None):
+        """
+        初始化响应对象
+
+        :param code: 响应状态码
+        :param msg: 响应消息
+        :param data: 响应数据,默认为None
+        """
+        self.code = code
+        self.message = message
+        self.data = data
+
+    def to_dict(self):
+        """
+        将响应对象转换为字典
+
+        :return: 包含响应信息的字典
+        """
+        return {
+            "code": self.code,
+            "message": self.message,
+            "data": self.data
+        }
+
+
+@app.route("/system/health", methods=["GET"])
+def system_health_check():
+    return Response(0, "成功").to_dict(), 200
+
+@app.route("/system/initdb", methods=["POST"])
+def system_init_database():
+    return Response(0, "成功").to_dict(), 200
+
+@app.route("/device/all", methods=["GET"])
 def get_device_list():
-    return g_devices, 200
+    return service.get_all_devices()
 
 @app.route("/device/<id>", methods=["GET"])
 def get_device_by_id(id):
-    return g_devices.get(id, "设备不存在"), 404
+    return service.get_device_by_id(id)
 
 @app.route("/device/<id>", methods=["PUT"])
 def update_device_by_id(id):
-    # 选取字段
-    fields = ["name", "mac", "ip", "port", "ssh"]
-    # 检查请求体
-    if not request.json:
-        return "请求体不能为空", 400
-    # 检查请求体字段
-    for field in fields:
-        if field not in request.json:
-            return f"缺少字段: {field}", 400
-    g_devices.update({id: request.json})
-    return "设备已更新", 200
+    return service.update_device_by_id(id, request.json)
 
 @app.route("/device/<id>", methods=["DELETE"])
 def delete_device_by_id(id):
-    device = g_devices.get(id)
-    if not device:
-        return "设备不存在", 404
-    # 删除设备
-    g_devices.pop(id)
-    save_config_to_json(g_devices)
-    return "设备已删除", 200
-
-def wakeup(id: int):
-    """
-    唤醒设备
-    :param id: ID
-    :return: msg, code
-    """
-    # 获取待唤醒的设备
-    device = g_devices.get(id)
-    if not device:
-        return "设备不存在", 404
-
-    mac = device.get("mac")
-    if not mac:
-        return "设备不存在", 404
-    ip = device.get("ip")
-    if not ip:
-        return "设备不存在", 404
-    port = device.get("port")
-    if not port:
-        return "设备不存在", 404
-    name = device.get("name")
-    if not name:
-        name = "未命名设备", 404
-
-    # 唤醒设备
-    try:
-        # 发送唤醒包
-        send_magic_packet(mac, ip_address=ip, port=port)
-        return f"已唤醒 {name}", 200
-    except Exception as e:
-        return f"唤醒失败: {str(e)}", 500
-
-def shutdown(id: int):
-    """
-    关机设备
-    :param id: ID
-    :return: msg, code
-    """
-    # 获取待关机的设备
-    device = g_devices.get(id)
-    if not device:
-        return "设备不存在", 404
-
-    ip = device.get("ssh").get("ip")
-    port = device.get("ssh").get("port")
-    username = device.get("ssh").get("username")
-    password = device.get("ssh").get("password")
-    pkey = device.get("ssh").get("pkey")
-    key_filename = device.get("ssh").get("key_filename")
-    passphrase = device.get("ssh").get("passphrase")
-
-    name = device.get("name")
-    if not name:
-        name = "未命名设备"
-
-    # 关机设备
-    try:
-        # 创建SSH对象
-        ssh_client = paramiko.SSHClient()
-
-        # 允许连接不在know_hosts文件中的主机
-        ssh_client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-
-        # 连接服务器
-        ssh_client.connect(hostname=ip, port=port, username=username, password=password,
-                           pkey=pkey, key_filename=key_filename, passphrase=passphrase)
-
-        # 执行命令
-        stdin, stdout, stderr = ssh_client.exec_command("shutdown -h now")
-
-        # 获取命令结果
-        result = stdout.read().decode()
-        error = stderr.read().decode()
-
-        # 关闭连接
-        ssh_client.close()
-
-        return f"已关机 {name}", 200
-    except Exception as e:
-        return f"关机失败: {str(e)}", 500
-
-def ping(id: int):
-    """
-    ping设备
-    :param id: ID
-    :return: msg, code
-    """
-    # 获取待ping的设备
-    device = g_devices.get(id)
-    if not device:
-        return "设备不存在", 404
-
-    ip = device.get("ip")
-    if not ip:
-        return "设备不存在", 404
-    name = device.get("name")
-    if not name:
-        name = "未命名设备", 404
-
-    # ping设备
-    try:
-        # 创建MultiPing对象
-        mp = MultiPing([ip])
-
-        # 发送ping请求
-        mp.send()
-
-        # 获取响应结果
-        response = mp.receive(timeout=1)
-
-        # 关闭连接
-        mp.close()
-
-        # 检查响应结果
-        if response[ip] == 0:
-            return f"{name} 在线", 200
-        else:
-            return f"{name} 离线", 500
-
-    except Exception as e:
-        return f"ping失败: {str(e)}", 500
+    return service.delete_device_by_id(id)
 
 @app.route("/device/<id>", methods=["POST"])
 def operate_device_by_id(id):
     op = request.args.get("op", default=None, type=str)
+    return service.operate_device_by_id(id, op)
 
-    if not id:
-        return "缺少设备ID", 400
+@app.errorhandler(404)
+def not_found(error):
+    return render_template('error.html'), 404
 
-    if op:
-        op = op.lower()
 
-    if op == "wakeup": # 唤醒
-        result = wakeup(id)
-    elif op == "shutdown": # 关机
-        result = shutdown(id)
-    elif op == "ping": # ping
-        result = ping(id)
-    else:
-        return "无效的操作", 400
-    return result
+service = DeviceService()
 
 
 if __name__ == "__main__":
-    # 加载配置
-    if e_database_type.lower() in ['mysql', 'mariadb']:
-        g_devices = load_config_from_database()
-    else:
-        g_devices = load_config_from_json()
-    # 启动应用
+    service.init_database(app, db)
     app.run(host='0.0.0.0', port=5000)
