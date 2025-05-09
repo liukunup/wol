@@ -1,6 +1,8 @@
 Flask
 Flask-SQLAlchemy
+Flask-Migrate
 Flask-APScheduler
 wakeonlan
 multiping
 paramiko
+dotenv

@@ -1,0 +1,41 @@
+/* 自定义样式 */
+.card {
+    margin-bottom: 20px;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    transition: transform 0.2s;
+}
+
+.card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.status-online {
+    color: #28a745;
+}
+
+.status-offline {
+    color: #dc3545;
+}
+
+.status-unknown {
+    color: #6c757d;
+}
+
+.action-btn {
+    margin: 2px;
+    width: 100%;
+    border-radius: 4px;
+}
+
+.refresh-btn {
+    border-radius: 20px;
+    padding: 8px 16px;
+}
+
+.search-box {
+    border-radius: 20px;
+    padding: 8px 16px;
+}
