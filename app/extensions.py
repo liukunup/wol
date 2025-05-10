@@ -1,5 +1,4 @@
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from sqlalchemy.orm import DeclarativeBase
 
 
@@ -8,4 +7,3 @@ class Base(DeclarativeBase):
 
 # 数据库扩展
 db = SQLAlchemy(model_class=Base)
-migrate = Migrate()

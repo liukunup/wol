@@ -23,3 +23,10 @@ http://ip:port/wake/00:11:22:33:44:55?host=255.255.255.255&port=9
 - /device/<id>?op=wakeup
 - /device/<id>?op=shutdown
 - /device/<id>?op=ping
+
+
+
+
+
+
+

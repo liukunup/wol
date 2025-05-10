@@ -4,7 +4,7 @@ from extensions import db
 
 class DeviceModel(db.Model):
     """
-    设备表: 用于存储设备信息,包括设备名称/MAC地址/IP地址/端口号等
+    设备表: 用于存储设备信息, 包括设备名称/MAC地址/IP地址/端口号等
     """
 
     # 表名
