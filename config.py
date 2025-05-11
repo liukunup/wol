@@ -29,7 +29,7 @@ class Config:
     SQLALCHEMY_RECORD_QUERIES = True
 
     # Limiter
-    RATELIMIT_DEFAULT = "10 per day;3 per hour"
+    RATELIMIT_DEFAULT = "86400 per day;3600 per hour"
     RATELIMIT_STORAGE_URI = "memory://"
     RATELIMIT_HEADERS_ENABLED = True
 
