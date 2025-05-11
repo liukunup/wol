@@ -31,11 +31,57 @@
 }
 
 .refresh-btn {
-    border-radius: 20px;
     padding: 8px 16px;
+    width: warp-content;
 }
 
 .search-box {
-    border-radius: 20px;
+    border-radius: 24px;
     padding: 8px 16px;
+    width: 256px;
+}
+
+.clickable-icon {
+    padding: 0.375rem 0.75rem;
+    cursor: pointer;
+    user-select: none;
+    display: flex;
+    align-items: center;
+}
+
+.clickable-icon:hover {
+    background-color: transparent;
+}
+
+.icon-row .col-auto {
+    padding-left: 0px;
+    padding-right: 0px;
+}
+
+.status-icon-online {
+    color: green;
+}
+
+.status-icon-offline {
+    color: red;
+}
+
+.status-icon-unknown {
+    color: lightgray;
+}
+
+.delay-green {
+    color: green;
+}
+
+.delay-yellow {
+    color: yellow;
+}
+
+.delay-red {
+    color: red;
+}
+
+.delay-default {
+    color: inherit;
 }

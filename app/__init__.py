@@ -16,8 +16,14 @@ def create_app(config_name='default'):
     app.config.from_object(config[config_name])
 
     # 初始化扩展
-    from .extensions import db
+    from .extensions import db, migrate, scheduler
     db.init_app(app)
+    migrate.init_app(app, db)
+
+    # 初始化定时任务
+    from .main import cronjobs
+    scheduler.init_app(app)
+    scheduler.start()
 
     # 注册蓝图
     from .main import blueprint as main_blueprint

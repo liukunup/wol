@@ -1,22 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from enum import Enum
-
-class ResponseCode(Enum):
-    """
-    常用响应状态码枚举类
-    """
-    SUCCESS = (200, "请求成功")
-    BAD_REQUEST = (400, "请求参数错误")
-    UNAUTHORIZED = (401, "未授权访问")
-    FORBIDDEN = (403, "禁止访问")
-    NOT_FOUND = (404, "资源未找到")
-    INTERNAL_SERVER_ERROR = (500, "服务器内部错误")
-
-    def __init__(self, code, message):
-        self.code = code
-        self.message = message
-
 class ApiResponse:
     """
     响应对象类, 用于封装 API 接口的响应信息

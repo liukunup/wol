@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
+from tkinter import NO
 import paramiko
 from wakeonlan import send_magic_packet
 from multiping import MultiPing
-from .models import DeviceModel
+from app.main.models import DeviceModel
 
 class DeviceManager:
 
@@ -48,13 +49,24 @@ class DeviceManager:
         """
         检查设备是否在线
 
-        :return: 在线返回 True, 离线返回 False
+        :return: 在线返回 响应信息, 离线返回 None
         """
-        # 创建 MultiPing 对象，设置超时时间和重试次数
-        mp = MultiPing([self.device.wol_host], timeout=1, retry=1)
+        mp = MultiPing([self.device.ssh_host])
         mp.send()
-        responses, no_responses = mp.receive()
-        return self.device.wol_host in responses
+        responses, no_responses = mp.receive(timeout=1)
+        return self.device.ssh_host in responses
+
+    @staticmethod
+    def ping_all(hosts):
+        """
+        检查多个设备是否在线
+
+        :param hosts: 设备列表
+        :return: 在线设备列表, 离线设备列表
+        """
+        mp = MultiPing(hosts)
+        mp.send()
+        return mp.receive(timeout=1)
 
     def ssh(self, command):
         """

@@ -1,5 +1,11 @@
+# -*- coding: utf-8 -*-
+
+import json
+from datetime import datetime, timezone
+from zoneinfo import ZoneInfo
+
 from sqlalchemy.orm import mapped_column, Mapped
-from extensions import db
+from app.extensions import db
 
 
 class DeviceModel(db.Model):
@@ -12,25 +18,38 @@ class DeviceModel(db.Model):
 
     # 字段
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True, comment="设备ID")
-    name: Mapped[str] = mapped_column(nullable=False, comment="自定义设备名称")
-    wol_mac: Mapped[str] = mapped_column(nullable=True, comment="[WOL] MAC地址")
+    name: Mapped[str] = mapped_column(nullable=False, comment="设备名称")
+    status: Mapped[int] = mapped_column(nullable=False, default=3, comment="设备状态: 1-在线, 2-离线, 3-未知")
+    delay: Mapped[float] = mapped_column(nullable=True, default=1, comment="延迟时间(秒)")
+    last_uptime: Mapped[datetime] = mapped_column(nullable=True, comment="最后上线时间")
+    last_heartbeat: Mapped[datetime] = mapped_column(nullable=True, comment="最后心跳时间")
+    wol_mac: Mapped[str] = mapped_column(nullable=False, comment="[WOL] MAC地址")
     wol_host: Mapped[str] = mapped_column(nullable=True, comment="[WOL] IP地址或域名")
     wol_port: Mapped[int] = mapped_column(nullable=True, comment="[WOL] 端口号")
-    ssh_ip: Mapped[str] = mapped_column(nullable=True, comment="[SSH] IP地址或域名")
-    ssh_port: Mapped[int] = mapped_column(nullable=True, comment="[SSH] 端口号")
-    ssh_username: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 账户")
+    ssh_host: Mapped[str] = mapped_column(nullable=False, comment="[SSH] IP地址或域名")
+    ssh_port: Mapped[int] = mapped_column(nullable=False, comment="[SSH] 端口号")
+    ssh_username: Mapped[str] = mapped_column(nullable=False, comment="[SSH] 账户")
     ssh_password: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密码")
     ssh_pkey: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密钥字符串")
     ssh_key_filename: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密钥文件名")
     ssh_passphrase: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密钥的密码")
+    created_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.now(timezone.utc), comment="创建时间")
+    updated_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
 
-    def to_dict(self, secure=True):
+    def to_dict(self, timezone="UTC", secure=True):
         """
         将设备对象转换为字典
 
+        :param timezone: 时区,默认为UTC
         :param secure: 是否安全返回,如果为True,则不会返回密码和密钥等敏感信息
         :return: 包含设备信息的字典
         """
+        # 转换时间为指定时区
+        tz = ZoneInfo(timezone)
+        if self.last_uptime: self.last_uptime = self.last_uptime.astimezone(tz).isoformat()
+        if self.last_heartbeat: self.last_heartbeat = self.last_heartbeat.astimezone(tz).isoformat()
+        if self.created_at: self.created_at = self.created_at.astimezone(tz).isoformat()
+        if self.updated_at: self.updated_at = self.updated_at.astimezone(tz).isoformat()
         # 拆分字段
         wol_fields = [col for col in self.__table__.columns if col.name.startswith('wol_')]
         ssh_fields = [col for col in self.__table__.columns if col.name.startswith('ssh_')]

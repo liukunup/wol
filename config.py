@@ -29,6 +29,10 @@ class Config:
     # 分页配置
     POSTS_PER_PAGE = 10
 
+    # 定时任务配置
+    SCHEDULER_API_ENABLED = True
+    SCHEDULER_TIMEZONE = 'Asia/Shanghai'
+
 class DevelopmentConfig(Config):
     DEBUG = True
 
