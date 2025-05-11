@@ -19,7 +19,7 @@ def index():
 
 @blueprint.route("/system/health", methods=["GET"])
 def system_health_check():
-    return ApiResponse(0, "成功").to_dict()
+    return ApiResponse(0, "success").to_dict()
 
 @blueprint.route("/device/all", methods=["GET"])
 def get_device_list():

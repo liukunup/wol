@@ -1,9 +1,8 @@
+# -*- coding: utf-8 -*-
+
 import os
 import secrets
 from dotenv import load_dotenv
-
-# 加载环境变量
-load_dotenv()
 
 class Config:
 
@@ -23,29 +22,56 @@ class Config:
     else:
         database_name = os.environ.get('DB_NAME', 'wakeonlan')
         database_url = f'sqlite:///{database_name}.db'
+
+    # SQLAlchemy
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or database_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+    SQLALCHEMY_RECORD_QUERIES = True
 
-    # 分页配置
-    POSTS_PER_PAGE = 10
+    # Limiter
+    RATELIMIT_DEFAULT = "10 per day;3 per hour"
+    RATELIMIT_STORAGE_URI = "memory://"
+    RATELIMIT_HEADERS_ENABLED = True
 
-    # 定时任务配置
+    # Scheduler
     SCHEDULER_API_ENABLED = True
     SCHEDULER_TIMEZONE = 'Asia/Shanghai'
 
+    @staticmethod
+    def init_app(app):
+        pass
+
 class DevelopmentConfig(Config):
+    """ 开发环境 """
     DEBUG = True
+    SQLALCHEMY_ECHO = True
 
 class TestingConfig(Config):
+    """ 测试环境 """
     TESTING = True
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
 
 class ProductionConfig(Config):
+    """ 生产环境 """
     pass
+
+class DockerConfig(ProductionConfig):
+    """ Docker 环境 """
+
+    @classmethod
+    def init_app(cls, app):
+        ProductionConfig.init_app(app)
+        # log to stderr
+        import logging
+        from logging import StreamHandler
+        stream_handler = StreamHandler()
+        stream_handler.setLevel(logging.WARNING)
+        app.logger.addHandler(stream_handler)
 
 config = {
     'development': DevelopmentConfig,
     'testing': TestingConfig,
     'production': ProductionConfig,
+    "docker": DockerConfig,
     'default': DevelopmentConfig
 }

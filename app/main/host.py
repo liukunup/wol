@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from tkinter import NO
 import paramiko
 from wakeonlan import send_magic_packet
 from multiping import MultiPing
