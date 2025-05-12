@@ -1,10 +1,13 @@
 # -*- coding: utf-8 -*-
 
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 from app.extensions import db
-from app.main.host import DeviceManager
-from app.main.models import DeviceModel
-from app.main.response import ApiResponse
+from .host import DeviceManager
+from .models import DeviceModel
+from .response import ApiResponse
 from .vault import DeviceEntry, Vault
 
 class DeviceService:
@@ -13,7 +16,7 @@ class DeviceService:
     """
 
     def __init__(self):
-        password = os.getenv('VAULT_PASSWORD')
+        password = os.getenv('VAULT_PASSWORD') or '123456'
         self.vault = Vault('vault.kdbx', password)
 
     def get_all_devices(self):
@@ -75,7 +78,7 @@ class DeviceService:
                 self.vault.update(title, entry)
                 return ApiResponse(0, "success").to_dict(), 200
             except Exception as e:
-                print(f"更新设备时出错: {e}")
+                logger.error(f"更新设备时出错: {e}")
                 db.session.rollback()
         return ApiResponse(-1, "server error").to_dict(), 500
 
@@ -126,7 +129,7 @@ class DeviceService:
             self.vault.insert(entry)
             return ApiResponse(0, "success").to_dict(), 200
         except Exception as e:
-            print(f"添加设备时出错: {e}")
+            logger.error(f"添加设备时出错: {e}")
             db.session.rollback()
             return ApiResponse(0, f"Failed\n{e}").to_dict(), 200
 

@@ -3,10 +3,8 @@
 import json
 from datetime import datetime, timezone
 from zoneinfo import ZoneInfo
-
 from sqlalchemy.orm import mapped_column, Mapped
 from app.extensions import db
-
 
 class DeviceModel(db.Model):
     """

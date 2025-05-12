@@ -1,4 +1,4 @@
-// 从服务器获取主机数据
+// 获取主机数据
 function fetchHosts() {
     fetch(`/device/all`)
         .then(response => response.json())

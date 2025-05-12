@@ -1,9 +1,12 @@
 # -*- coding: utf-8 -*-
 
+import logging
+logger = logging.getLogger(__name__)
+
 import paramiko
 from wakeonlan import send_magic_packet
 from multiping import MultiPing
-from app.main.models import DeviceModel
+from .models import DeviceModel
 
 class DeviceManager:
 
@@ -19,9 +22,10 @@ class DeviceManager:
         try:
             # 发送魔法包以唤醒设备
             send_magic_packet(self.device.wol_mac, ip_address=self.device.wol_host, port=self.device.wol_port)
+            logger.info(f"设备 {self.device.name} 已唤醒, 请稍等...")
             return True
         except Exception as e:
-            print(f"唤醒设备失败: {e}")
+            logger.error(f"唤醒设备失败: {e}")
             return False
 
     def shutdown(self):
@@ -32,6 +36,7 @@ class DeviceManager:
         """
         command = "shutdown -h now"
         result = self.ssh(command)
+        logger.info(f"设备 {self.device.name} 已关机, 请稍等...")
         return result is not None
 
     def reboot(self):
@@ -42,6 +47,7 @@ class DeviceManager:
         """
         command = "reboot"
         result = self.ssh(command)
+        logger.info(f"设备 {self.device.name} 已重启, 请稍等...")
         return result is not None
 
     def ping(self):
@@ -75,22 +81,17 @@ class DeviceManager:
         :return: 命令执行结果, 如果执行失败则返回 None
         """
         try:
-            # 创建 SSH 客户端对象
             client = paramiko.SSHClient()
             # 设置自动添加未知主机密钥策略
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            # 连接到设备
             client.connect(self.device.ssh_ip, port=self.device.ssh_port,
                            username=self.device.ssh_username, password=self.device.ssh_password,
                            pkey=self.device.ssh_pkey, key_filename=self.device.ssh_key_filename,
                            passphrase=self.device.ssh_passphrase)
-            # 执行 SSH 命令
             stdin, stdout, stderr = client.exec_command(command)
-            # 返回命令执行结果
             return stdout.read().decode('utf-8')
         except Exception as e:
-            print(f"执行SSH命令失败: {e}")
+            logger.error(f"SSH 命令执行失败: {e}")
             return None
         finally:
-            # 关闭 SSH 连接
             client.close()

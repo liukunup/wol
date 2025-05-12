@@ -1,10 +1,11 @@
 # -*- coding: utf-8 -*-
 
+import logging
+logger = logging.getLogger(__name__)
+
 import os
 import json
-from turtle import settiltangle
 from pykeepass import PyKeePass, create_database
-
 
 class DeviceEntry:
 

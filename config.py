@@ -64,9 +64,9 @@ class DockerConfig(ProductionConfig):
         # log to stderr
         import logging
         from logging import StreamHandler
-        stream_handler = StreamHandler()
-        stream_handler.setLevel(logging.WARNING)
-        app.logger.addHandler(stream_handler)
+        handler = StreamHandler()
+        handler.setLevel(logging.WARNING)
+        app.logger.addHandler(handler)
 
 config = {
     'development': DevelopmentConfig,
