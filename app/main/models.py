@@ -58,7 +58,7 @@ class DeviceModel(db.Model):
         result = {c.name: getattr(self, c.name) for c in other_fields}
         result.update({'wol': {c.name.replace('wol_', ''): getattr(self, c.name) for c in wol_fields}})
         result.update({'ssh': {c.name.replace('ssh_', ''): getattr(self, c.name) for c in ssh_fields}})
-        # 移除密钥
+        # 移除密钥相关信息
         if secure and 'ssh' in result:
             if 'password' in result['ssh']:
                 result['ssh']['password'] = None

@@ -7,4 +7,5 @@ Flask-Cors
 wakeonlan
 multiping
 paramiko
+pykeepass
 dotenv

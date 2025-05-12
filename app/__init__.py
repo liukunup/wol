@@ -21,8 +21,8 @@ def create_app(config_name='default'):
     from .extensions import limiter
     limiter.init_app(app)
 
-    from .extensions import talisman
-    talisman.init_app(app)
+    # from .extensions import talisman
+    # talisman.init_app(app)
 
     from flask_cors import CORS
     CORS(app)
