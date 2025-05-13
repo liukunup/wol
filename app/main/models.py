@@ -27,19 +27,14 @@ class DeviceModel(db.Model):
     ssh_host: Mapped[str] = mapped_column(nullable=False, comment="[SSH] IP地址或域名")
     ssh_port: Mapped[int] = mapped_column(nullable=False, comment="[SSH] 端口号")
     ssh_username: Mapped[str] = mapped_column(nullable=False, comment="[SSH] 账户")
-    ssh_password: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密码")
-    ssh_pkey: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密钥字符串")
-    ssh_key_filename: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密钥文件名")
-    ssh_passphrase: Mapped[str] = mapped_column(nullable=True, comment="[SSH] 密钥的密码")
     created_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.now(timezone.utc), comment="创建时间")
     updated_at: Mapped[datetime] = mapped_column(nullable=False, default=datetime.now(timezone.utc), onupdate=datetime.now(timezone.utc), comment="更新时间")
 
-    def to_dict(self, timezone="UTC", secure=True):
+    def to_dict(self, timezone="UTC"):
         """
         将设备对象转换为字典
 
         :param timezone: 时区,默认为UTC
-        :param secure: 是否安全返回,如果为True,则不会返回密码和密钥等敏感信息
         :return: 包含设备信息的字典
         """
         # 转换时间为指定时区
@@ -48,24 +43,17 @@ class DeviceModel(db.Model):
         if self.last_heartbeat: self.last_heartbeat = self.last_heartbeat.astimezone(tz).isoformat()
         if self.created_at: self.created_at = self.created_at.astimezone(tz).isoformat()
         if self.updated_at: self.updated_at = self.updated_at.astimezone(tz).isoformat()
+
         # 拆分字段
         wol_fields = [col for col in self.__table__.columns if col.name.startswith('wol_')]
         ssh_fields = [col for col in self.__table__.columns if col.name.startswith('ssh_')]
         other_fields = [col for col in self.__table__.columns if col not in wol_fields and col not in ssh_fields]
+
         # 构建字典
         result = {c.name: getattr(self, c.name) for c in other_fields}
         result.update({'wol': {c.name.replace('wol_', ''): getattr(self, c.name) for c in wol_fields}})
         result.update({'ssh': {c.name.replace('ssh_', ''): getattr(self, c.name) for c in ssh_fields}})
-        # 移除密钥相关信息
-        if secure and 'ssh' in result:
-            if 'password' in result['ssh']:
-                result['ssh']['password'] = None
-            if 'pkey' in result['ssh']:
-                result['ssh']['pkey'] = None
-            if 'key_filename' in result['ssh']:
-                result['ssh']['key_filename'] = None
-            if 'passphrase' in result['ssh']:
-                result['ssh']['passphrase'] = None
+
         return result
 
     def __str__(self):

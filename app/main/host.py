@@ -6,11 +6,10 @@ logger = logging.getLogger(__name__)
 import paramiko
 from wakeonlan import send_magic_packet
 from multiping import MultiPing
-from .models import DeviceModel
 
 class DeviceManager:
 
-    def __init__(self, device: DeviceModel):
+    def __init__(self, device):
         self.device = device
 
     def wakeup(self):
@@ -21,8 +20,8 @@ class DeviceManager:
         """
         try:
             # 发送魔法包以唤醒设备
-            send_magic_packet(self.device.wol_mac, ip_address=self.device.wol_host, port=self.device.wol_port)
-            logger.info(f"设备 {self.device.name} 已唤醒, 请稍等...")
+            send_magic_packet(self.device['wol_mac'], ip_address=self.device['wol_host'], port=self.device['wol_port'])
+            logger.info(f"设备 {self.device['name']} 已唤醒, 请稍等...")
             return True
         except Exception as e:
             logger.error(f"唤醒设备失败: {e}")
@@ -36,7 +35,7 @@ class DeviceManager:
         """
         command = "shutdown -h now"
         result = self.ssh(command)
-        logger.info(f"设备 {self.device.name} 已关机, 请稍等...")
+        logger.info(f"设备 {self.device['name']} 已关机, 请稍等...")
         return result is not None
 
     def reboot(self):
@@ -47,7 +46,7 @@ class DeviceManager:
         """
         command = "reboot"
         result = self.ssh(command)
-        logger.info(f"设备 {self.device.name} 已重启, 请稍等...")
+        logger.info(f"设备 {self.device['name']} 已重启, 请稍等...")
         return result is not None
 
     def ping(self):
@@ -56,10 +55,10 @@ class DeviceManager:
 
         :return: 在线返回 响应信息, 离线返回 None
         """
-        mp = MultiPing([self.device.ssh_host])
+        mp = MultiPing([self.device['ssh_host']])
         mp.send()
         responses, no_responses = mp.receive(timeout=1)
-        return self.device.ssh_host in responses
+        return self.device['ssh_host'] in responses
 
     @staticmethod
     def ping_all(hosts):
@@ -84,10 +83,10 @@ class DeviceManager:
             client = paramiko.SSHClient()
             # 设置自动添加未知主机密钥策略
             client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-            client.connect(self.device.ssh_ip, port=self.device.ssh_port,
-                           username=self.device.ssh_username, password=self.device.ssh_password,
-                           pkey=self.device.ssh_pkey, key_filename=self.device.ssh_key_filename,
-                           passphrase=self.device.ssh_passphrase)
+            client.connect(self.device['ssh_host'], port=self.device['ssh_port'],
+                           username=self.device['username'], password=self.device['password'],
+                           pkey=self.device['private_key'], key_filename=self.device['key_filename'],
+                           passphrase=self.device['passphrase'])
             stdin, stdout, stderr = client.exec_command(command)
             return stdout.read().decode('utf-8')
         except Exception as e:

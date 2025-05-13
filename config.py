@@ -2,7 +2,7 @@
 
 import os
 import secrets
-from dotenv import load_dotenv
+from urllib.parse import quote
 
 class Config:
 
@@ -10,26 +10,26 @@ class Config:
     SECRET_KEY = os.getenv('SECRET_KEY') or secrets.token_hex(16)
 
     # 数据库配置
-    database_type = os.environ.get('DB_TYPE', 'sqlite') # [sqlite, mysql, mariadb, postgresql]
-    database_type = database_type.lower()
-    if database_type in ['mysql', 'mariadb', 'postgresql']:
-        database_host = os.environ.get('DB_HOST', 'localhost')
-        database_port = os.environ.get('DB_PORT', '3306')
-        database_username = os.environ.get('DB_USERNAME', 'wakeonlan')
-        database_password = os.environ.get('DB_PASSWORD', 'pls_set_stronger_password')
-        database_name = os.environ.get('DB_NAME', 'wakeonlan')
-        database_url = f'{database_type}://{database_username}:{database_password}@{database_host}:{database_port}/{database_name}'
+    DB_TYPE = os.environ.get('DB_TYPE', 'sqlite') # [sqlite, mysql, mariadb, postgresql]
+    DB_TYPE = DB_TYPE.lower()
+    if DB_TYPE in ['mysql', 'mariadb', 'postgresql']:
+        DB_HOST = os.environ.get('DB_HOST', 'localhost')
+        DB_PORT = os.environ.get('DB_PORT', '3306')
+        DB_USERNAME = os.environ.get('DB_USERNAME', 'wakeonlan')
+        DB_PASSWORD = os.environ.get('DB_PASSWORD', 'pls_use_strong_password')
+        DB_SCHEMA = os.environ.get('DB_SCHEMA', 'wakeonlan')
+        target_database_url = f'{DB_TYPE}://{quote(DB_USERNAME)}:{quote(DB_PASSWORD)}@{DB_HOST}:{DB_PORT}/{DB_SCHEMA}'
     else:
-        database_name = os.environ.get('DB_NAME', 'wakeonlan')
-        database_url = f'sqlite:///{database_name}.db'
+        DB_SCHEMA = os.environ.get('DB_SCHEMA', 'wakeonlan')
+        target_database_url = f'sqlite:///{DB_SCHEMA}.db'
 
     # SQLAlchemy
-    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or database_url
+    SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or target_database_url
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_RECORD_QUERIES = True
 
     # Limiter
-    RATELIMIT_DEFAULT = "86400 per day;3600 per hour"
+    RATELIMIT_DEFAULT = "86400 per day; 3600 per hour"
     RATELIMIT_STORAGE_URI = "memory://"
     RATELIMIT_HEADERS_ENABLED = True
 
@@ -73,5 +73,7 @@ config = {
     'testing': TestingConfig,
     'production': ProductionConfig,
     "docker": DockerConfig,
+
+    # 默认环境
     'default': DevelopmentConfig
 }

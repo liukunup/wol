@@ -19,11 +19,19 @@ class DeviceService:
         password = os.getenv('VAULT_PASSWORD')
         self.vault = Vault('vault.kdbx', password)
 
-    def get_all_devices(self):
+    def get_all_devices(self, keyword=None):
         """
         获取所有设备信息
         """
-        devices = db.session.query(DeviceModel).all()
+        if keyword:
+            devices = db.session.query(DeviceModel).filter(
+                db.or_(
+                    DeviceModel.name.like(f'%{keyword}%'),
+                    DeviceModel.ssh_host.like(f'%{keyword}%')
+                )
+            ).all()
+        else:
+            devices = db.session.query(DeviceModel).all()
         return ApiResponse(0, "success", [device.to_dict() for device in devices]).to_dict(), 200
 
     def get_device_by_id(self, id):
@@ -42,45 +50,53 @@ class DeviceService:
         """
         dev = db.session.query(DeviceModel).filter_by(id=id).first()
         if dev:
-            title = str(id)
-            # 获取密钥信息
-            obj = self.vault.get(title)
-            if obj:
-                dev.ssh_password = obj['password']
-                dev.ssh_pkey = obj['private_key']
-                dev.ssh_key_filename = obj['key_filename']
-                dev.ssh_passphrase = obj['passphrase']
-            for key, value in device.items():
-                if key == "id": continue
-                if not value: continue
-                setattr(dev, key, value)
+            # 更新数据库
             try:
-                # 创建密钥条目
-                entry = DeviceEntry(
-                    id=id,
-                    name=dev['name'],
-                    host=dev['ssh_host'],
-                    port=dev['ssh_port'],
-                    username=dev['ssh_username'],
-                    password=dev['ssh_password'],
-                    private_key=dev['ssh_pkey'],
-                    key_filename=dev['ssh_key_filename'],
-                    passphrase=dev['ssh_passphrase']
-                )
-                # 安全删除密钥信息
-                dev['ssh_password'] = None
-                dev['ssh_pkey'] = None
-                dev['ssh_key_filename'] = None
-                dev['ssh_passphrase'] = None
-                # 更新数据库
+                keys = ['ssh_password','ssh_pkey', 'ssh_key_filename', 'ssh_passphrase']
+                for key, value in device.items():
+                    if key == 'id': continue
+                    if key in keys: continue
+                    setattr(dev, key, value)
                 db.session.commit()
-                # 更新密钥条目
-                self.vault.update(title, entry)
-                return ApiResponse(0, "success").to_dict(), 200
             except Exception as e:
                 logger.error(f"更新设备时出错: {e}")
                 db.session.rollback()
-        return ApiResponse(-1, "server error").to_dict(), 500
+                return ApiResponse(-1, "server error").to_dict(), 500
+
+            # 更新密钥条目
+            try:
+                title = str(id)
+                obj = self.vault.get(title)
+                print(obj)
+                if obj:
+                    if 'ssh_password' in device:
+                        obj['password'] = device['ssh_password']
+                    if'ssh_pkey' in device:
+                        obj['private_key'] = device['ssh_pkey']
+                    if'ssh_key_filename' in device:
+                        obj['key_filename'] = device['ssh_key_filename']
+                    if'ssh_passphrase' in device:
+                        obj['passphrase'] = device['ssh_passphrase']
+                entry = DeviceEntry(
+                    id=id,
+                    name=dev.name,
+                    host=dev.ssh_host,
+                    port=dev.ssh_port,
+                    username=dev.ssh_username,
+                    password=obj['password'],
+                    private_key=obj['private_key'],
+                    key_filename=obj['key_filename'],
+                    passphrase=obj['passphrase']
+                )
+                self.vault.update(title, entry)
+            except Exception as e:
+                logger.error(f"更新密钥时出错: {e}")
+                return ApiResponse(-1, "server error").to_dict(), 500
+
+            # 更新成功
+            return ApiResponse(0, "success").to_dict(), 200
+        else:
+            return ApiResponse(-1, "device not found").to_dict(), 404
 
     def delete_device_by_id(self, id):
         """
@@ -114,11 +130,11 @@ class DeviceService:
                 key_filename=device['ssh_key_filename'],
                 passphrase=device['ssh_passphrase']
             )
-            # 安全删除密钥信息
-            device['ssh_password'] = None
-            device['ssh_pkey'] = None
-            device['ssh_key_filename'] = None
-            device['ssh_passphrase'] = None
+            # 显式安全删除密钥信息
+            device.pop('ssh_password')
+            device.pop('ssh_pkey')
+            device.pop('ssh_key_filename')
+            device.pop('ssh_passphrase')
             # 添加数据库
             dev = DeviceModel(**device)
             db.session.add(dev)
@@ -139,19 +155,21 @@ class DeviceService:
         """
         if op is not None: op = op.lower()
 
-        device = db.session.query(DeviceModel).filter_by(id=id).first()
-        if not device:
+        dev = db.session.query(DeviceModel).filter_by(id=id).first()
+        if not dev:
             return ApiResponse(-1, "device not found").to_dict(), 404
         
         # 获取密钥信息
         title = str(id)
         obj = self.vault.get(title)
-        if obj:
-            device.ssh_password = obj['password']
-            device.ssh_pkey = obj['private_key']
-            device.ssh_key_filename = obj['key_filename']
-            device.ssh_passphrase = obj['passphrase']
 
+        # 合并设备信息和密钥信息
+        device = {}
+        device.update(dev.to_dict())
+        device.pop('ssh_username')
+        device.update(obj)
+
+        # 执行操作
         dm = DeviceManager(device)
         if op == "wol": # 唤醒
             result = dm.wakeup()

@@ -3,5 +3,16 @@
         "tests"
     ],
     "python.testing.unittestEnabled": false,
-    "python.testing.pytestEnabled": true
+    "python.testing.pytestEnabled": true,
+    "terminal.integrated.env.windows": {
+        // Vault
+        "VAULT_PASSWORD": "pls_use_strong_password",
+        // Database
+        "DB_TYPE": "sqlite",
+        "DB_HOST": "localhost",
+        "DB_PORT": "3306",
+        "DB_USERNAME": "wakeonlan",
+        "DB_PASSWORD": "pls_use_strong_password",
+        "DB_SCHEMA": "wakeonlan"
+    }
 }

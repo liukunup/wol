@@ -1,6 +1,10 @@
 // 获取主机数据
-function fetchHosts() {
-    fetch(`/device/all`)
+function fetchHosts(keyword = null) {
+    let url = '/device/all';
+    if (keyword) {
+        url += `?keyword=${encodeURIComponent(keyword)}`;
+    }
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.code !== 0) {
@@ -178,6 +182,12 @@ function addHost(name,
     })
 }
 
+// 搜索主机
+function searchHosts() {
+    const keyword = document.getElementById('hostSearch').value.trim();
+    fetchHosts(keyword);
+}
+
 // 编辑主机
 function editHost(hostId) {
     // 根据 hostId 获取主机信息
@@ -304,8 +314,8 @@ function performAction(hostId, action, hostName) {
 // 获取操作名称
 function getActionName(action) {
     const actions = {
-        'wake': '唤醒',
-        'restart': '重启',
+        'wakeup': '唤醒',
+        'reboot': '重启',
         'shutdown': '关机'
     };
     return actions[action] || action;
@@ -327,16 +337,27 @@ function showError(error) {
 
 // 初始化
 document.addEventListener('DOMContentLoaded', function() {
-    // 页面加载时获取主机数据
+    // 当页面加载完成时，刷新一次数据
     fetchHosts();
 
-    // 设置定时刷新，这里设置为每 30 秒刷新一次，你可以根据需要调整时间
-    const refreshInterval = 30000; // 30000 毫秒 = 30 秒
-    setInterval(fetchHosts, refreshInterval);
+    // 为搜索框添加事件监听
+    document.getElementById('hostSearch').addEventListener('input', function() {
+        // 清空时刷新一次数据
+        if (this.value === '') {
+            fetchHosts();
+        }
+    });
+    document.getElementById('hostSearch').addEventListener('keypress', function(e) {
+        // 按下 Enter 键时触发搜索
+        if (e.key === 'Enter') {
+            searchHosts();
+        }
+    });
 
-    // 刷新
+    // 为刷新按钮添加事件监听
     document.getElementById('refreshBtn')?.addEventListener('click', fetchHosts);
-    // 新增
+
+    // 为新增按钮添加事件监听
     document.getElementById('addHostBtn')?.addEventListener('click', function() {
         const modal = new bootstrap.Modal(document.getElementById('hostModal'));
         modal.show();

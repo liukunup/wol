@@ -36,7 +36,13 @@ class DeviceEntry:
 
     @property
     def notes(self):
-        return f'Name: {self.name}\nHost: {self._host}\nPort: {self._port}'
+        obj = {
+            'Id': self.id,
+            'Name': self.name,
+            'Host': self._host,
+            'Port': self._port
+        }
+        return json.dumps(obj, ensure_ascii=False, indent=4)
 
     @property
     def binary(self):
@@ -60,6 +66,7 @@ class Vault:
             # 创建一个新的数据库文件
             self.__kp = create_database(filename, password=password)
             self._group = self.__kp.add_group(self.__kp.root_group, self._group_name)
+            self.__kp.save()
         else:
             # 打开现有的数据库文件
             self.__kp = PyKeePass(filename, password=password)
@@ -100,9 +107,12 @@ class Vault:
         """
         获取一条记录
         """
+        obj = None
         entry = self.__kp.find_entries(title=title, first=True)
         if entry:
-            attachments = self.__kp.find_attachments(filename=f'{dev.name}.bin', first=True)
-            obj = json.loads(attachments[0].data.decode('utf-8'))
-            return obj.update({'username': entry.username, 'password': entry.password})
-        return None
+            obj = {'username': entry.username, 'password': entry.password}
+            notes = json.loads(entry.notes)
+            obj.update(notes)
+            attachment = self.__kp.find_attachments(filename=f"{notes['Name']}.bin", first=True)
+            obj.update(json.loads(attachment.data.decode('utf-8')))
+        return obj

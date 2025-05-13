@@ -7,23 +7,20 @@ from .service import DeviceService
 
 service = DeviceService()
 
-@blueprint.errorhandler(404)
-def not_found(error):
-    return render_template('error.html'), 404
-
 @blueprint.route("/")
 @blueprint.route("/index")
 @blueprint.route("/index.html")
 def index():
     return render_template('index.html')
 
-@blueprint.route("/system/health", methods=["GET"])
+@blueprint.route("/healthz", methods=["GET"])
 def system_health_check():
     return ApiResponse(0, "success").to_dict()
 
 @blueprint.route("/device/all", methods=["GET"])
 def get_device_list():
-    return service.get_all_devices()
+    keyword = request.args.get("keyword", default=None, type=str)
+    return service.get_all_devices(keyword=keyword)
 
 @blueprint.route("/device", methods=["POST"])
 def add_device():
