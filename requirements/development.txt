@@ -1,0 +1,10 @@
+Flask
+Flask-SQLAlchemy
+Flask-Migrate
+Flask-APScheduler
+Flask-Limiter
+wakeonlan
+multiping
+paramiko
+pykeepass
+dotenv

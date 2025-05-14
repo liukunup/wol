@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12 d-flex justify-content-end">
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#hostModal">新增主机</button>
+    </div>
+</div>
+
+{% include 'includes/_host.html' %}
+
+<div class="row" id="hostsContainer">
+    <div class="col-12 text-center py-5">
+        <i class="fas fa-server fa-3x text-muted mb-3"></i>
+        <p class="text-muted">没有找到任何主机哟</p>
+    </div>
+</div>
+{% endblock %}
