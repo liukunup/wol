@@ -50,6 +50,12 @@ docker run -d \
 - 主机探活
 - 远程控制（重启、关闭）
 
+## 截图分享
+
+![show](screenshot/screenshot_1.png)
+
+![add or edit](screenshot/screenshot_2.png)
+
 ## 开发说明
 
 ### Windows
