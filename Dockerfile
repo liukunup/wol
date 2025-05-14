@@ -3,22 +3,22 @@ LABEL LIUKUN="liukunup@outlook.com"
 
 # 默认时区
 ARG TIMEZONE="Asia/Shanghai"
-ENV TZ ${TIMEZONE}
+ENV TZ=${TIMEZONE}
 
 # FLASK
-ENV FLASK_APP run.py
-ENV FLASK_CONFIG docker
+ENV FLASK_APP=run.py
+ENV FLASK_CONFIG=docker
 
 # Vault
-ENV VAULT_PASSWORD pls_use_strong_password
+ENV VAULT_PASSWORD=pls_use_strong_password
 
 # 数据库
-ENV DB_TYPE sqlite
-ENV DB_HOST localhost
-ENV DB_PORT 3306
-ENV DB_USERNAME wakeonlan
-ENV DB_PASSWORD pls_use_strong_password
-ENV DB_SCHEMA wakeonlan
+ENV DB_TYPE=sqlite
+ENV DB_HOST=localhost
+ENV DB_PORT=3306
+ENV DB_USERNAME=wakeonlan
+ENV DB_PASSWORD=pls_use_strong_password
+ENV DB_SCHEMA=wakeonlan
 
 # 工作路径
 WORKDIR /opt/wol
