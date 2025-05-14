@@ -13,7 +13,7 @@ service = DeviceService()
 def index():
     return render_template('index.html')
 
-@blueprint.route("/healthz", methods=["GET"])
+@blueprint.route("/health", methods=["GET"])
 def system_health_check():
     return ApiResponse(0, "success").to_dict()
 

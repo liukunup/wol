@@ -6,7 +6,7 @@
     "python.testing.pytestEnabled": true,
     "terminal.integrated.env.windows": {
         // Vault
-        "VAULT_PASSWORD": "pls_use_strong_password",
+        "KEEPASS_PASSWORD": "pls_use_strong_password",
         // Database
         "DB_TYPE": "sqlite",
         "DB_HOST": "localhost",

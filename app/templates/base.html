@@ -32,23 +32,13 @@
 
     {% include 'includes/_footer.html' %}
 
+    {% include 'includes/_toast.html' %}
+
     <!-- Bootstrap JS 和依赖 -->
     <script src="https://fastly.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <!-- 自定义JS -->
     <script src="{{ url_for('static', filename='js/main.js') }}"></script>
     {% block extra_js %}{% endblock %}
-
-    <div class="toast-container position-fixed top-0 start-50 translate-middle-x p-3 mt-5">
-        <div id="hostsToast" class="toast" role="alert" aria-live="assertive" aria-atomic="true">
-            <div class="toast-header">
-                <strong class="me-auto">提示</strong>
-                <button type="button" class="btn-close" data-bs-dismiss="toast" aria-label="Close"></button>
-            </div>
-            <div class="toast-body">
-                暂无主机数据
-            </div>
-        </div>
-    </div>
 
 </body>
 </html>

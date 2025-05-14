@@ -1,13 +1,18 @@
 import pytest
 import os
 from app import create_app
+from app.extensions import db
 
 @pytest.fixture(scope="session", autouse=True)
 def client():
     # 注入环境变量
-    os.environ['VAULT_PASSWORD'] = "pls_use_strong_password"
-    # 创建测试客户端
+    os.environ['KEEPASS_PASSWORD'] = "pls_use_strong_password"
+    # 创建测试应用
     app = create_app("testing")
+    # 创建数据库表
+    with app.app_context():
+        db.create_all()
+    # 创建测试客户端
     with app.test_client() as client:
         yield client
 
@@ -23,7 +28,7 @@ def test_index(client):
 
 @pytest.mark.run(order=-1)
 def test_health_check(client):
-    response = client.get('/healthz')
+    response = client.get('/health')
     assert response.status_code == 200
     assert response.json == {'code': 0, 'data': None, 'message': 'success'}
 

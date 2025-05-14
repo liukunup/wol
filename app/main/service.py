@@ -16,7 +16,7 @@ class DeviceService:
     """
 
     def __init__(self):
-        password = os.getenv('VAULT_PASSWORD')
+        password = os.getenv('KEEPASS_PASSWORD')
         self.vault = Vault('vault.kdbx', password)
 
     def get_all_devices(self, keyword=None):

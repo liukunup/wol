@@ -3,7 +3,6 @@ Flask-SQLAlchemy
 Flask-Migrate
 Flask-APScheduler
 Flask-Limiter
-Flask-Cors
 wakeonlan
 multiping
 paramiko
