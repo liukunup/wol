@@ -21,7 +21,7 @@ ENV DB_PASSWORD=pls_use_strong_password
 ENV DB_SCHEMA=wakeonlan
 
 # 工作路径
-WORKDIR /opt/wol
+WORKDIR /wol
 
 # 环境部署
 COPY app app

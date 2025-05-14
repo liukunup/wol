@@ -7,11 +7,12 @@ WOL(Wake on LAN) 是一个主机管理系统，同时兼具网络唤醒和远程
 - Windows
 
 ```powershell
-docker run -d \
-  -p 5000:5000 \
-  -e KEEPASS_PASSWORD=pls_use_strong_password \
-  -v /path/to/keepass:/app/keepass \
-  liukunup/wol:0.1.0
+docker run -d `
+  -p 5000:5000 `
+  -e KEEPASS_PASSWORD=pls_use_strong_password `
+  -v wol-data:/wol/data `
+  --name=wakeonlan `
+  liukunup/wol:latest
 ```
 
 - macOS/Linux
@@ -20,8 +21,9 @@ docker run -d \
 docker run -d \
   -p 5000:5000 \
   -e KEEPASS_PASSWORD=pls_use_strong_password \
-  -v /path/to/keepass:/app/keepass \
-  liukunup/wol:0.1.0
+  -v wol-data:/wol/data \
+  --name=wakeonlan \
+  liukunup/wol:latest
 ```
 
 ### 配置外置数据库
@@ -38,6 +40,7 @@ docker run -d \
   -e DB_USERNAME=wakeonlan \
   -e DB_PASSWORD=pls_use_strong_password \
   -e DB_SCHEMA=wakeonlan \
+  -v wol-data:/wol/data \
   liukunup/wol:0.1.0
 ```
 

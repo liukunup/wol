@@ -17,7 +17,10 @@ class DeviceService:
 
     def __init__(self):
         password = os.getenv('KEEPASS_PASSWORD')
-        self.vault = Vault('vault.kdbx', password)
+        data_dir = os.path.join(os.path.dirname(__file__), '../../data')
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+        self.vault = Vault(os.path.join(data_dir, 'vault.kdbx'), password)
 
     def get_all_devices(self, keyword=None):
         """

@@ -21,7 +21,10 @@ class Config:
         target_database_url = f'{DB_TYPE}://{quote(DB_USERNAME)}:{quote(DB_PASSWORD)}@{DB_HOST}:{DB_PORT}/{DB_SCHEMA}'
     else:
         DB_SCHEMA = os.environ.get('DB_SCHEMA', 'wakeonlan')
-        target_database_url = f'sqlite:///{DB_SCHEMA}.db'
+        data_dir = os.path.join(os.path.dirname(__file__), 'data')
+        if not os.path.exists(data_dir):
+            os.makedirs(data_dir)
+        target_database_url = f'sqlite:///{os.path.join(data_dir, DB_SCHEMA)}.db'
 
     # SQLAlchemy
     SQLALCHEMY_DATABASE_URI = os.getenv('DATABASE_URL') or target_database_url
