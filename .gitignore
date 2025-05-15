@@ -174,4 +174,7 @@ cython_debug/
 .pypirc
 
 # KeePass database files
-*.kdbx
+data/*.kdbx
+
+# SQLite database files
+data/*.db
